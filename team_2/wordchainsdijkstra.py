@@ -1,13 +1,22 @@
-from collections import defaultdict, deque
 import sys
 import string
 import heapq
+
+# had some time to kill on a flight so thought i would see if i could
+# get the dojo word-chain program running using dijkstra's algorithm.
+# this should give the shortest chain between two given words, at the
+# expense of running time.
+
+# it seems quite robust - it does the seven->eight chain faster 
+# than the original version from the dojo.
+
+# could probably be improved further by adding A* type heuristic
 
 def make_graph(n):
     with open('/usr/share/dict/words') as f:
         words = set(word.lower() for word in f.read().splitlines() if len(word) == n)
     print 'there are '+str(len(words))+' words of this length'
-    graph = defaultdict(list)
+    graph = {}
     for word in words:
         graph[word] = Node(word,similar_words(word, words))
     return graph
@@ -21,29 +30,18 @@ def similar_words(word, words):
                 sim_words.add(new_word)
     return sim_words
 
-#def walk(start_node, end_node, graph, visited=set(), chain=[]):
-#    graph_words = graph[start_node]
-#    if end_node in graph_words:
-#        print "win"
-#        return
-#    for word in graph_words:
-#        visited.add(word)
-
-#def walk(graph, start, end):
-#    paths = deque([[start]])
-#    while True:
-#        path = paths.popleft()
-#        current_node = path[-1]
-#        next_nodes = graph[current_node]
-#        if end in next_nodes:
-#            return path + [end]
-#        paths.extend([path + [node] for node in next_nodes])
-
-
 def walk(graph, start, end):
     heap = []
-    
+     
     start_node = graph[start]
+    if not start_node:
+        print 'no path from '+start
+        return []
+    end_node = graph[end]
+    if not end_node:
+        print 'no path to '+end
+        return []
+
     start_node.dist = 0
 
     for n in graph.values():
@@ -60,12 +58,18 @@ def walk(graph, start, end):
             if new_dist < neighbour.dist:
                 neighbour.dist = new_dist
                 neighbour.previous = node
+            if n == end:
+                break
         unvisited.remove(node)
-        heap.sort()
+        heap.sort() #expensive! 
         
     path = []
     node = graph[end]
-    while True:
+    if node.dist == float('inf'):
+        print 'no links to '+end
+        return []
+
+    while node:
         path.append(node.word)
         print node
         if node.word == start:
@@ -108,38 +112,14 @@ class Node:
     def __hash__(self):
         return self.word.__hash__()
 
-def make_node(word,neighbours):
-    return {'word':word, 'neighbours':neighbours}
-
-
-def fail(start,end):
-    print "No path found from "+start+" to "+end+""
-
-def get_path_heap_element(path, end):
-    last_in_path = path[-1]
-    d = distance(last_in_path, end)
-    return (d, path)
-
-def distance(word1, word2):
-    if len(word1) != len(word2):
-        return float('inf')
-    deltas = 0
-    for i in range(len(word1)):
-        a = word1[i] 
-        b = word2[i]
-        if a != b:
-            deltas = deltas + 1
-    return deltas
-
-
 def solve(start_word, end_word):
     assert len(start_word) == len(end_word)
     graph = make_graph(len(start_word))
     return walk(graph, start_word, end_word)
 
-def wordchain(start, finish):
+def find(start, finish):
     print " -> ".join(solve(start,finish))
 
 if __name__ == "__main__":
     start_word, end_word = sys.argv[1:]
-    wordchain(start_word, end_word)
+    find(start_word, end_word)
